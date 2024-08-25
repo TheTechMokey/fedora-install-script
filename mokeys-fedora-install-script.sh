@@ -56,7 +56,7 @@ sudo dnf install ffmpeg ffmpeg-libs libva libva-utils
 sudo dnf config-manager --set-enabled fedora-cisco-openh264
 sudo dnf install -y openh264 gstreamer1-plugin-openh264 mozilla-openh264
 
-# Install Flatpaks
+# Install Flatpaks --- https://flathub.org/
 mokey_flathub () {
 	log "mokey_flathub"
 	local -a mokey_flathub_install
@@ -109,3 +109,10 @@ mokey_flathub
 
 #verify Nvidia cuda is working
 sudo nvidia-smi
+
+echo "if nvidia-smi shows no information, wait up to 5 minutes to validate:"
+echo "run nvidia-smi"
+echo "or"
+echo "lsmod | grep nvidia"
+
+echo "after validation, reboot"
