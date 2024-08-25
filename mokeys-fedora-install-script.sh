@@ -106,3 +106,6 @@ mokey_flathub () {
 flatpak install -y flathub ${mokey_flathub_install[*]}
 }
 mokey_flathub
+
+#verify Nvidia cuda is working
+sudo nvidia-smi
