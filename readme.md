@@ -6,5 +6,4 @@
 
 ```
 sudo chmod +x /.mokeys-fedora-install-script.sh
-/.mokeyssudo chmod +x /.mokeys-fedora-install-script.sh
 ```
