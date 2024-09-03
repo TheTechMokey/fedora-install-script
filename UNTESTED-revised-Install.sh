@@ -15,6 +15,10 @@ defaultyes=True
 keepcache=True
 EOF
 
+# Update Package Metadata
+echo "Updating package metadata..."
+sudo dnf update -y
+
 # System Upgrade
 echo "Upgrading system..."
 sudo dnf upgrade --refresh -y
