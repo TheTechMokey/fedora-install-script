@@ -196,7 +196,7 @@ if [ "$skip_nvidia" != true ]; then
     RETRY_INTERVAL=30
     for ((i=1; i<=MAX_RETRIES; i++)); do
         if command -v nvidia-smi >/dev/null 2>&1; then
-            echo "NVIDIA drivers are installed. Verifying..."
+            echo "NVIDIA drivers are installed. Verifying... This process can take up to 5 minutes to verify"
             if nvidia-smi >/dev/null 2>&1; then
                 echo "NVIDIA drivers are working correctly."
                 break
@@ -211,7 +211,7 @@ if [ "$skip_nvidia" != true ]; then
     done
 
     if ((i > MAX_RETRIES)); then
-        echo "NVIDIA drivers verification failed after several attempts. Please check your installation manually."
+        echo "NVIDIA drivers verification failed after several attempts. Please do your NVIDIA installation manually."
         exit 1
     fi
 
