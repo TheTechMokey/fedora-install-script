@@ -138,8 +138,8 @@ systemctl --user stop tracker-miner-fs-3
 systemctl --user mask tracker-store
 systemctl --user stop tracker-store
 # Disable and Mask Bluetooth
-sudo systemctl disable bluetooth.service
-sudo systemctl mask bluetooth.service
+# sudo systemctl disable bluetooth.service
+# sudo systemctl mask bluetooth.service
 # Enable TLP and Thermald
 echo "Configuring TLP and Thermald..."
 sudo systemctl enable tlp
