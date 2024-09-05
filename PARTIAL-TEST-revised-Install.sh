@@ -172,6 +172,7 @@ install_flatpak_apps() {
         "com.getpostman.Postman"
         "io.dbeaver.DBeaverCommunity"
         "org.wireshark.Wireshark"
+        "com.github.mtkennerly.ludusavi"
     )
     flatpak install -y flathub "${mokey_flathub_install[@]}"
 }
