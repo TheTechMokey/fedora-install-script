@@ -1,242 +1,238 @@
 #!/bin/bash
 
-set -e
+set -e          # Exit on any error
+set -o pipefail # Exit if any command in a pipe fails
 
-# =======================
-# System Configuration
-# =======================
+# Helper function to log messages
+log() {
+    echo "[INFO] $1"
+    logger -t script "[INFO] $1" # Log to system log
+}
 
-# DNF Configuration
-echo "Configuring DNF..."
-sudo tee -a /etc/dnf/dnf.conf <<EOF
-fastestmirror=1
-max_parallel_downloads=10
-defaultyes=True
-keepcache=True
-EOF
+error() {
+    echo "[ERROR] $1"
+    logger -t script "[ERROR] $1" # Log to system log
+}
 
-# Update Package Metadata
-echo "Updating package metadata..."
-sudo dnf update -y
+# Function to check Secure Boot status
+check_secure_boot() {
+    log "Checking Secure Boot status..."
 
-# System Upgrade
-echo "Upgrading system..."
-sudo dnf upgrade --refresh -y
-
-# Add RPM Fusion Repositories
-echo "Adding RPM Fusion repositories..."
-sudo dnf install -y \
-    https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
-    https://download1.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm
-
-# Install Core CLI Tools
-echo "Installing core CLI tools..."
-sudo dnf install -y \
-    zsh \
-    neofetch \
-    htop \
-    glances \
-    bpytop \
-    lm_sensors \
-    gparted \
-    virt-manager \
-    qemu-kvm \
-    libvirt \
-    libvirt-python \
-    libguestfs-tools \
-    bridge-utils \
-    cockpit \
-    nmap \
-    wireshark \
-    git \
-    curl \
-    wget \
-    thermald \
-    tlp
-
-# Install and Configure ZRAM
-echo "Installing and configuring ZRAM..."
-sudo dnf install -y zram-generator
-sudo tee /etc/systemd/zram-generator.conf > /dev/null <<EOF
-[zram0]
-zram-size = min(ram, 4096)
-compression-algorithm = zstd
-EOF
-sudo systemctl daemon-reload
-sudo systemctl start systemd-zram-setup@zram0.service
-
-# =======================
-# Application Installation
-# =======================
-
-# Install Core Flatpaks
-echo "Installing essential Flatpaks..."
-flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-flatpak install -y flathub \
-    com.github.finefindus.eyedropper \
-    com.github.tchx84.Flatseal \
-    com.github.wwmm.easyeffects \
-    com.obsproject.Studio \
-    com.obsproject.Studio.Plugin.OBSVkCapture \
-    com.visualstudio.code \
-    com.valvesoftware.Steam \
-    net.lutris.Lutris \
-    network.loki.Session \
-    org.blender.Blender \
-    org.freedesktop.Platform.VulkanLayer.MangoHud \
-    org.freedesktop.Platform.VulkanLayer.OBSVkCapture \
-    org.gnome.World.PikaBackup \
-    org.mozilla.Thunderbird \
-    org.pipewire.Helvum \
-    org.signal.Signal \
-    md.obsidian.Obsidian \
-    com.jgraph.drawio.desktop \
-    org.gimp.GIMP \
-    org.videolan.VLC \
-    io.github.shiftey.Desktop \
-    org.nmap.Zenmap \
-    org.remmina.Remmina \
-    com.teamspeak.TeamSpeak \
-    dev.vencord.Vesktop \
-    com.spotify.Client \
-    com.heroicgameslauncher.hgl
-
-# Configure Flatpak to Use System Themes
-echo "Configuring Flatpak to use system themes..."
-sudo dnf install -y gnome-themes-standard adwaita-gtk2-theme adwaita-gtk3-theme papirus-icon-theme
-flatpak override --user --env=GTK_THEME=Adwaita:dark
-flatpak override --user --env=ICON_THEME=Papirus
-
-# =======================
-# Optimization
-# =======================
-
-# Debloat
-echo "Removing unnecessary packages..."
-sudo dnf -y remove \
-    ModemManager \
-    adcli \
-    anaconda* \
-    anthy-unicode \
-    atmel-firmware \
-    eog \
-    libertas-usb8388-firmware \
-    orca \
-    ppp \
-    pptp
-
-# Performance Optimization
-echo "Optimizing system performance..."
-# Disable GNOME Animations
-gsettings set org.gnome.desktop.interface enable-animations false
-# Configure Swappiness
-echo 'vm.swappiness=10' | sudo tee /etc/sysctl.d/99-swappiness.conf
-sudo sysctl -p /etc/sysctl.d/99-swappiness.conf
-# Mask and Stop Tracker
-systemctl --user mask tracker-miner-fs-3
-systemctl --user stop tracker-miner-fs-3
-systemctl --user mask tracker-store
-systemctl --user stop tracker-store
-# Disable and Mask Bluetooth
-# sudo systemctl disable bluetooth.service
-# sudo systemctl mask bluetooth.service
-# Enable TLP and Thermald
-echo "Configuring TLP and Thermald..."
-sudo systemctl enable tlp
-sudo systemctl start tlp
-sudo systemctl enable thermald
-sudo systemctl start thermald
-
-# GNOME Wayland Fractional Scaling
-echo "Enabling Wayland fractional scaling..."
-gsettings set org.gnome.mutter experimental-features "['scale-monitor-framebuffer', 'fractional-scaling']"
-gsettings set org.gnome.desktop.interface scaling-factor 2
-
-# Automatic Updates
-echo "Configuring automatic updates..."
-sudo dnf install -y dnf-automatic
-sudo systemctl enable --now dnf-automatic.timer
-
-# =======================
-# NVIDIA Drivers and CUDA
-# =======================
-
-# Check Secure Boot Status and User Confirmation
-echo "Checking Secure Boot status..."
-if mokutil --sb-state | grep -q 'Secure Boot: Enabled'; then
-    echo "Secure Boot is enabled. This may affect NVIDIA driver installation."
-    read -p "Do you want to proceed with NVIDIA driver installation? (yes/no): " user_response
-    if [[ "$user_response" != "yes" ]]; then
-        echo "Skipping NVIDIA driver installation and hardware acceleration configuration."
-        skip_nvidia=true
-    else
-        skip_nvidia=false
-    fi
-else
-    echo "Secure Boot is not enabled. Proceeding with NVIDIA driver installation."
-    skip_nvidia=false
-fi
-
-# Install Nvidia Drivers and CUDA (if not skipped)
-if [ "$skip_nvidia" != true ]; then
-    echo "Installing Nvidia drivers and CUDA..."
-    sudo dnf install -y \
-        akmod-nvidia \
-        xorg-x11-drv-nvidia-cuda \
-        xorg-x11-drv-nvidia-cuda-libs \
-        svt-hevc \
-        svt-av1 \
-        svt-vp9 \
-        nvidia-vaapi-driver \
-        libva-utils
-
-    # Check NVIDIA Driver Installation
-    echo "Checking if NVIDIA drivers are installed..."
-    MAX_RETRIES=12
-    RETRY_INTERVAL=30
-    for ((i=1; i<=MAX_RETRIES; i++)); do
-        if command -v nvidia-smi >/dev/null 2>&1; then
-            echo "NVIDIA drivers are installed. Verifying... This process can take up to 5 minutes to verify"
-            if nvidia-smi >/dev/null 2>&1; then
-                echo "NVIDIA drivers are working correctly."
-                break
-            else
-                echo "NVIDIA drivers seem to be installed but 'nvidia-smi' is not working. Waiting..."
-                sleep $RETRY_INTERVAL
-            fi
-        else
-            echo "NVIDIA drivers are not installed. Please ensure they are installed correctly."
-            exit 1
-        fi
-    done
-
-    if ((i > MAX_RETRIES)); then
-        echo "NVIDIA drivers verification failed after several attempts. Please do your NVIDIA installation manually."
+    if ! command -v mokutil &>/dev/null; then
+        error "mokutil is not installed. Please install mokutil to check Secure Boot status."
         exit 1
     fi
 
-    # Configure Hardware Acceleration
-    echo "Configuring hardware acceleration..."
-    sudo dnf config-manager --set-enabled fedora-cisco-openh264
-    sudo dnf install -y \
-        ffmpeg \
-        ffmpeg-libs \
-        libva \
-        libva-utils \
-        openh264 \
-        gstreamer1-plugin-openh264 \
-        mozilla-openh264
-fi
+    if mokutil --sb-state | grep -q 'Secure Boot enabled'; then
+        log "Secure Boot is enabled."
+        read -p "This script was designed to run without Secure Boot. Secure Boot is enabled, would you like to continue? [y/N]: " choice
+        case "$choice" in
+        [Yy]*) log "Continuing with Secure Boot enabled." ;;
+        *)
+            log "Exiting script."
+            exit 1
+            ;;
+        esac
+    else
+        log "Secure Boot is not enabled. Proceeding with the script."
+    fi
+}
 
-# =======================
-# Final Checks and Reboot
-# =======================
+# Modify DNF configuration
+configure_dnf() {
+    log "Configuring DNF..."
 
-# Cleanup
-echo "Cleaning up..."
-sudo dnf autoremove -y
-sudo dnf clean all
+    tmp_file=$(mktemp)
 
-# Reboot Prompt
-echo "Setup complete! It's recommended to reboot your system now."
+    if ! grep -q '^fastestmirror=1' /etc/dnf/dnf.conf; then
+        echo "fastestmirror=1" | sudo tee -a "$tmp_file"
+    fi
 
+    if ! grep -q '^max_parallel_downloads=10' /etc/dnf/dnf.conf; then
+        echo "max_parallel_downloads=10" | sudo tee -a "$tmp_file"
+    fi
+
+    if ! grep -q '^countme=false' /etc/dnf/dnf.conf; then
+        echo "countme=false" | sudo tee -a "$tmp_file"
+    fi
+
+    if [ -s "$tmp_file" ]; then
+        sudo tee -a /etc/dnf/dnf.conf <"$tmp_file"
+    else
+        log "No new DNF settings to add."
+    fi
+
+    rm -f "$tmp_file"
+}
+
+# Install RPM Fusion repositories
+install_rpm_fusion() {
+    log "Installing RPM Fusion repositories..."
+    if ! sudo dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm \
+        https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$(rpm -E %fedora).noarch.rpm; then
+        error "Failed to install RPM Fusion repositories."
+        exit 1
+    fi
+}
+
+# Update and upgrade system
+update_system() {
+    log "Updating the system..."
+    if ! sudo dnf -y update && sudo dnf -y upgrade --refresh; then
+        error "Failed to update and upgrade the system."
+        exit 1
+    fi
+}
+
+# KDE Plasma specific settings
+configure_kde() {
+    log "Configuring KDE Plasma settings..."
+
+    kwriteconfig5 --file kdeglobals --group KDE --key LookAndFeelPackage "org.kde.breezedark.desktop"
+    kwriteconfig5 --file kwinrc --group Windows --key BorderlessMaximizedWindows "true"
+    kwriteconfig5 --file kdeglobals --group Locale --key ShowSeconds "true"
+}
+
+# Firmware updates
+update_firmware() {
+    log "Updating firmware..."
+    if ! sudo dnf autoremove -y && sudo fwupdmgr refresh --force && sudo fwupdmgr get-devices && sudo fwupdmgr get-updates -y && sudo fwupdmgr update -y; then
+        error "Failed to update firmware."
+        exit 1
+    fi
+}
+
+# Add Flatpak repositories
+add_flatpak_repositories() {
+    log "Adding Flatpak repositories..."
+    flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+}
+
+# Install Nvidia drivers
+install_nvidia_drivers() {
+    log "Installing Nvidia drivers..."
+    if ! sudo dnf -y update && sudo dnf install -y akmod-nvidia xorg-x11-drv-nvidia-cuda xorg-x11-drv-nvidia-cuda-libs \
+        svt-hevc svt-av1 svt-vp9 nvidia-vaapi-driver libva-utils; then
+        error "Failed to install Nvidia drivers."
+        exit 1
+    fi
+}
+
+# Install media codecs
+install_media_codecs() {
+    log "Installing media codecs..."
+    if ! sudo dnf swap 'ffmpeg-free' 'ffmpeg' --allowerasing && sudo dnf update @multimedia --setopt="install_weak_deps=False" --exclude=PackageKit-gstreamer-plugin && sudo dnf update @sound-and-video && sudo dnf group install Multimedia; then
+        error "Failed to install media codecs."
+        exit 1
+    fi
+}
+
+# Enable hardware acceleration
+install_hardware_acceleration() {
+    log "Enabling hardware acceleration..."
+    if ! sudo dnf install -y ffmpeg ffmpeg-libs libva libva-utils && sudo dnf config-manager --set-enabled fedora-cisco-openh264 && sudo dnf install -y openh264 gstreamer1-plugin-openh264 mozilla-openh264; then
+        error "Failed to enable hardware acceleration."
+        exit 1
+    fi
+}
+
+# Install Flatpak Applications
+install_flatpak_apps() {
+    log "Installing Flatpak applications..."
+    local -a mokey_flathub_install=(
+        "com.github.finefindus.eyedropper"
+        "com.github.tchx84.Flatseal"
+        "com.github.wwmm.easyeffects"
+        "com.obsproject.Studio"
+        "com.obsproject.Studio.Plugin.OBSVkCapture"
+        "com.visualstudio.code"
+        "com.valvesoftware.Steam"
+        "net.lutris.Lutris"
+        "network.loki.Session"
+        "org.blender.Blender"
+        "org.freedesktop.Platform.VulkanLayer.MangoHud"
+        "org.freedesktop.Platform.VulkanLayer.OBSVkCapture"
+        "org.gnome.World.PikaBackup"
+        "org.mozilla.Thunderbird"
+        "org.pipewire.Helvum"
+        "org.signal.Signal"
+        "md.obsidian.Obsidian"
+        "com.jgraph.drawio.desktop"
+        "org.gimp.GIMP"
+        "org.videolan.VLC"
+        "io.github.shiftey.Desktop"
+        "org.nmap.Zenmap"
+        "org.remmina.Remmina"
+        "com.teamspeak.TeamSpeak"
+        "dev.vencord.Vesktop"
+        "com.spotify.Client"
+        "com.duncanjames.gamehub"
+        "com.heroicgameslauncher.hgl"
+        "com.jetbrains.IntelliJ-IDEA-Community"
+        "com.jetbrains.PyCharm-Community"
+        "com.axosoft.GitKraken"
+        "com.getpostman.Postman"
+        "io.dbeaver.DBeaverCommunity"
+        "org.wireshark.Wireshark"
+        "org.gns3.GNS3"
+        "org.angryipscanner.AngryIPScanner"
+        "com.netspot.NetSpot"
+    )
+    flatpak install -y flathub "${mokey_flathub_install[@]}"
+}
+
+# Verify Nvidia installation
+verify_nvidia() {
+    log "Verifying Nvidia installation..."
+
+    local retries=12
+    local wait_time=30
+    local success=false
+
+    for ((i = 1; i <= retries; i++)); do
+        if lsmod | grep -q nvidia; then
+            log "Nvidia kernel module is loaded."
+
+            if command -v nvidia-smi &>/dev/null; then
+                if sudo nvidia-smi &>/dev/null; then
+                    log "Nvidia driver installation verified successfully with 'nvidia-smi'."
+                    success=true
+                    break
+                else
+                    error "Nvidia driver installation verification failed with 'nvidia-smi'."
+                fi
+            else
+                error "'nvidia-smi' command not found. Please check if the Nvidia drivers are installed correctly."
+            fi
+        else
+            log "Nvidia kernel module is not loaded yet. Retrying in $wait_time seconds..."
+        fi
+
+        sleep $wait_time
+    done
+
+    if [ "$success" = true ]; then
+        log "Nvidia drivers are properly installed and working."
+    else
+        error "Nvidia driver installation failed after $((retries * wait_time)) seconds. Please check system logs for more details."
+        exit 1
+    fi
+}
+
+# Main script execution
+main() {
+    check_secure_boot
+    configure_dnf
+    install_rpm_fusion
+    update_system
+    configure_kde
+    update_firmware
+    add_flatpak_repositories
+    install_nvidia_drivers
+    install_media_codecs
+    install_hardware_acceleration
+    install_flatpak_apps
+    verify_nvidia
+}
+
+main
