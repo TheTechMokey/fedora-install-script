@@ -185,7 +185,7 @@ install_steam_wine_proton_dependencies() {
 
     sudo dnf install -y steam wine lutris wine-core wine-common wine-alsa \
         wine-tahoma-fonts vulkan vulkan-tools vulkan-loader \
-        dxvk vkd3d libvkd3d SDL2 SDL2_image SDL2_ttf SDL2_mixer SDL2_net
+        libvkd3d SDL2 SDL2_image SDL2_ttf SDL2_mixer SDL2_net
 }
 
 install_gamemode() {
