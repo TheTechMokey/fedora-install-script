@@ -84,7 +84,6 @@ update_system() {
     fi
 }
 
-# GNOME Shell customization
 configure_gnome() {
     log "Configuring GNOME settings..."
 
@@ -96,6 +95,23 @@ configure_gnome() {
 
     # Set clock to show seconds
     gsettings set org.gnome.desktop.interface clock-show-seconds true
+
+    # Example: Set resolution scaling for a specific monitor using xrandr
+    # First, find the connected monitors
+    connected_monitors=$(xrandr --listmonitors | grep -oP '\S+(?=\s+\d)')
+
+    # Apply resolution scaling to a specific monitor (change "HDMI-1" to your desired monitor identifier)
+    monitor_to_scale="HDMI-1"  # Example: use xrandr to list monitors and choose the correct one
+    scale_factor="1.25"  # Example scale factor
+
+    if echo "$connected_monitors" | grep -q "$monitor_to_scale"; then
+        log "Applying resolution scaling of $scale_factor to $monitor_to_scale..."
+        xrandr --output "$monitor_to_scale" --scale "${scale_factor}x${scale_factor}"
+    else
+        log "Monitor $monitor_to_scale not found, skipping resolution scaling."
+    fi
+
+    # Additional GNOME configurations can go here
 }
 
 # Firmware updates
