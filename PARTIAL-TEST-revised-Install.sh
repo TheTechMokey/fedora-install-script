@@ -150,7 +150,6 @@ install_flatpak_apps() {
         "com.obsproject.Studio.Plugin.Gstreamer"
         "com.visualstudio.code"
         "com.valvesoftware.Steam"
-        "net.lutris.Lutris"
         "network.loki.Session"
         "org.blender.Blender"
         "org.freedesktop.Platform.VulkanLayer.MangoHud"
@@ -180,6 +179,31 @@ install_flatpak_apps() {
     )
     flatpak install -y flathub "${mokey_flathub_install[@]}"
 }
+
+install_steam_wine_proton_dependencies() {
+    log "Installing Wine and Proton dependencies..."
+
+    sudo dnf install -y steam wine lutris wine-core wine-common wine-alsa \
+        wine-tahoma-fonts vulkan vulkan-tools vulkan-loader \
+        dxvk vkd3d libvkd3d SDL2 SDL2_image SDL2_ttf SDL2_mixer SDL2_net
+}
+
+install_gamemode() {
+    log "Installing and configuring Gamemode..."
+    if ! sudo dnf install -y gamemode; then
+        error "Failed to install Gamemode."
+        exit 1
+    fi
+
+    log "Enabling Gamemode globally..."
+    echo "export LD_PRELOAD=/usr/\$LIB/libgamemodeauto.so.0" | sudo tee -a /etc/environment
+}
+
+configure_mangohud() {
+    log "Configuring MangoHud..."
+    echo "MANGOHUD=1" | sudo tee -a /etc/environment
+}
+
 
 # Verify Nvidia installation
 verify_nvidia() {
@@ -232,6 +256,9 @@ main() {
     install_media_codecs
     install_hardware_acceleration
     install_flatpak_apps
+    install_gamemode
+    configure_mangohud
+    install_steam_wine_proton_dependencies
     verify_nvidia
 }
 
