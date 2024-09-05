@@ -152,7 +152,6 @@ install_flatpak_apps() {
         "org.blender.Blender"
         "org.freedesktop.Platform.VulkanLayer.MangoHud"
         "org.freedesktop.Platform.VulkanLayer.OBSVkCapture"
-        "org.gnome.World.PikaBackup"
         "org.mozilla.Thunderbird"
         "org.pipewire.Helvum"
         "org.signal.Signal"
