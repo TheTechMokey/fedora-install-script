@@ -180,7 +180,12 @@ install_flatpak_apps() {
     flatpak install -y flathub "${mokey_flathub_install[@]}"
 }
 
-install_steam_wine_proton_dependencies() {
+install_steam() {
+    log "Installing Steam..."
+    sudo dnf install -y steam
+}
+
+install_wine_proton_dependencies() {
     log "Installing Wine and Proton dependencies..."
 
     sudo dnf install -y steam wine lutris wine-core wine-common wine-alsa \
@@ -258,7 +263,8 @@ main() {
     install_flatpak_apps
     install_gamemode
     configure_mangohud
-    install_steam_wine_proton_dependencies
+    install_steam
+    install_wine_proton_dependencies
     verify_nvidia
 }
 
