@@ -166,7 +166,6 @@ install_flatpak_apps() {
         "com.teamspeak.TeamSpeak"
         "dev.vencord.Vesktop"
         "com.spotify.Client"
-        "com.duncanjames.gamehub"
         "com.heroicgameslauncher.hgl"
         "com.jetbrains.IntelliJ-IDEA-Community"
         "com.jetbrains.PyCharm-Community"
@@ -174,9 +173,6 @@ install_flatpak_apps() {
         "com.getpostman.Postman"
         "io.dbeaver.DBeaverCommunity"
         "org.wireshark.Wireshark"
-        "org.gns3.GNS3"
-        "org.angryipscanner.AngryIPScanner"
-        "com.netspot.NetSpot"
     )
     flatpak install -y flathub "${mokey_flathub_install[@]}"
 }
