@@ -178,7 +178,7 @@ install_flatpak_apps() {
 
 # Verify Nvidia installation
 verify_nvidia() {
-    log "Verifying Nvidia installation..."
+    log "Verifying Nvidia installation... This could take up to 5 minutes."
 
     local retries=12
     local wait_time=30
